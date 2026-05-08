@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sovereign Roast Log</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; background: #eee; padding: 20px; }
+        
+        /* APP INTERFACE STYLES */
+        #app-container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border: 2px solid #000; }
+        h1 { border-bottom: 2px solid #000; padding-bottom: 5px; text-transform: uppercase; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-weight: bold; font-size: 12px; }
+        .form-group input, .form-group textarea, .form-group select { width: 100%; font-family: inherit; box-sizing: border-box; border: 1px solid #999; padding: 4px; background: #fff; }
+        .form-group textarea { height: 40px; resize: vertical; }
+        .inline-group { display: flex; gap: 10px; }
+        .inline-group .form-group { flex: 1; }
+        button { background: #000; color: white; border: none; padding: 8px 16px; cursor: pointer; font-family: inherit; font-weight: bold; margin-top: 10px; margin-right: 5px; }
+        button:hover { background: #333; }
+        
+        /* LOG LIST STYLES */
+        .log-item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; display: flex; align-items: flex-start; gap: 10px; background: #fafafa; }
+        .log-item input[type="checkbox"] { margin-top: 4px; width: 16px; height: 16px; cursor: pointer; }
+        .log-details { flex: 1; }
+        .log-details h4 { margin: 0 0 5px 0; font-size: 13px; }
+        .log-details p { margin: 0; font-size: 11px; }
+        .stars { color: #d4a017; font-size: 14px; letter-spacing: 1px; }
+        .action-btns { display: flex; gap: 5px; }
+        .small-btn { color: white; border: none; padding: 4px 8px; cursor: pointer; font-size: 10px; font-family: inherit; font-weight: bold; }
+        .delete-btn { background: #a33; }
+        .delete-btn:hover { background: #c44; }
+        .edit-btn { background: #2a5699; }
+        .edit-btn:hover { background: #3a6baa; }
+        .cancel-btn { background: #666; }
+        .cancel-btn:hover { background: #888; }
+        #selection-actions { margin: 20px 0; padding: 10px; border-top: 2px solid #000; border-bottom: 2px solid #000; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+
+        /* PRINT LAYOUT STYLES */
+        /* Designed for 8.5x11 Letter Paper, 4-Up Grid */
+        .page { width: 8in; height: 10.5in; margin: 0 auto; background: white; padding: 0.25in; box-sizing: border-box; display: none; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 0.25in; page-break-after: always; break-after: page; }
+        .page:last-child { page-break-after: auto; break-after: auto; }
+        .card { border: 2px solid #000; padding: 12px; display: flex; flex-direction: column; }
+        h2 { margin: 4px 0 0 0; font-size: 12px; font-weight: bold; color: #000; }
+        h2.date { color: #999; margin-bottom: 20px; font-style: italic; }
+        h3 { margin: 8px 0; font-size: 12px; font-weight: bold; color: #000; }
+        ul { list-style: none; padding: 0; margin: 8px 0; font-size: 10px; }
+        li { margin-bottom: 3px; line-height: 1.2; }
+        .tasting-notes { border-top: 1px dashed #999; padding-top: 8px; margin: 8px 0; font-size: 10px; color: #333; }
+
+        @media print {
+            body { background: none; padding: 0; }
+            #app-container { display: none !important; }
+            .page { display: grid !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <h1>Sovereign Roast Log</h1>
+    
+    <!-- DATA ENTRY FORM -->
+    <div style="border: 1px solid #000; padding: 15px; margin-bottom: 20px; background: #f9f9f9;">
+        <h3 style="margin-top:0;" id="form-title">Log New Roast</h3>
+        <div class="inline-group">
+            <div class="form-group" style="flex: 2;"><label>Bean Name / Roast Level</label><input type="text" id="f-name" placeholder="Peru: El Diamante #1 - FC+"></div>
+            <div class="form-group" style="flex: 1;"><label>Roast Date</label><input type="text" id="f-date" placeholder="May 7, 2026"></div>
+        </div>
+        <div class="inline-group">
+            <div class="form-group" style="flex: 3;"><label>Origin / Process</label><input type="text" id="f-origin" placeholder="Roger Chilcon • Washed • Cajamarca"></div>
+            <div class="form-group" style="flex: 1;"><label>Rating</label>
+                <select id="f-rating">
+                    <option value="">Unrated</option>
+                    <option value="1">★</option>
+                    <option value="2">★★</option>
+                    <option value="3">★★★</option>
+                    <option value="4">★★★★</option>
+                    <option value="5">★★★★★</option>
+                </select>
+            </div>
+        </div>
+        <div class="inline-group">
+            <div class="form-group"><label>Dry Phase</label><input type="text" id="f-dry" placeholder="P5/Fast Drum (0:00-4:00)"></div>
+            <div class="form-group"><label>Brown Phase</label><input type="text" id="f-brown" placeholder="P5/Normal (4:00-8:00)"></div>
+        </div>
+        <div class="inline-group">
+            <div class="form-group"><label>Development Phase</label><input type="text" id="f-dev" placeholder="P3 @ 1st Crack (8:00-12:30)"></div>
+            <div class="form-group"><label>Espresso Prep</label><input type="text" id="f-espresso" placeholder="Std fine / 1:2 ratio / Rest 5d+"></div>
+        </div>
+        <div class="form-group"><label>Notes (Physical Profile)</label><input type="text" id="f-ai-notes" placeholder="Syrupy body, heavy chocolate."></div>
+        <div class="form-group"><label>Tasting Notes</label><textarea id="f-your-notes" placeholder="Leave blank to write in by hand after brewing..."></textarea></div>
+        
+        <button id="save-btn" onclick="saveRoast()">Save to Log</button>
+        <button id="cancel-btn" class="cancel-btn" onclick="cancelEdit()" style="display: none;">Cancel</button>
+    </div>
+
+    <!-- ROLLING LOG LIST -->
+    <h3>Roast History</h3>
+    
+    <div id="selection-actions">
+        <button onclick="toggleSelectAll()">Select / Unselect All</button>
+        <button onclick="printSelected()">Print Selected (Multi-Page)</button>
+        <button onclick="exportData()" style="margin-left: auto;">Export DB</button>
+        <button onclick="document.getElementById('import-file').click()">Import DB</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+    </div>
+
+    <div id="roast-log-list"></div>
+
+</div>
+
+<!-- PRINT TEMPLATE CONTAINER -->
+<div id="print-container"></div>
+
+<script>
+    let editingId = null; 
+
+    // DATABASE FUNCTIONS
+    function getRoasts() {
+        const roasts = localStorage.getItem('behmor_roasts');
+        return roasts ? JSON.parse(roasts) : [];
+    }
+
+    function saveRoasts(roasts) {
+        localStorage.setItem('behmor_roasts', JSON.stringify(roasts));
+    }
+
+    function getStars(rating) {
+        if(!rating) return '';
+        const num = parseInt(rating);
+        let s = '';
+        for(let i=0; i<5; i++) { s += i < num ? '★' : '☆'; }
+        return s;
+    }
+
+    // SAVE OR UPDATE ROAST
+    function saveRoast() {
+        const roasts = getRoasts();
+        const data = {
+            name: document.getElementById('f-name').value,
+            date: document.getElementById('f-date').value,
+            origin: document.getElementById('f-origin').value,
+            rating: document.getElementById('f-rating').value,
+            dry: document.getElementById('f-dry').value,
+            brown: document.getElementById('f-brown').value,
+            dev: document.getElementById('f-dev').value,
+            espresso: document.getElementById('f-espresso').value,
+            aiNotes: document.getElementById('f-ai-notes').value,
+            yourNotes: document.getElementById('f-your-notes').value
+        };
+
+        if(!data.name) { alert("Please enter a Bean Name."); return; }
+
+        if (editingId) {
+            const index = roasts.findIndex(r => r.id === editingId);
+            if(index !== -1) roasts[index] = { ...roasts[index], ...data };
+        } else {
+             data.id = Date.now();
+             roasts.push(data);
+        }
+
+        saveRoasts(roasts);
+        cancelEdit(); 
+        renderLog();
+    }
+
+    // EDIT ROAST
+    function editRoast(id) {
+        const roasts = getRoasts();
+        const roast = roasts.find(r => r.id === id);
+        if(!roast) return;
+
+        editingId = id;
+        document.getElementById('f-name').value = roast.name;
+        document.getElementById('f-date').value = roast.date;
+        document.getElementById('f-origin').value = roast.origin;
+        document.getElementById('f-rating').value = roast.rating;
+        document.getElementById('f-dry').value = roast.dry;
+        document.getElementById('f-brown').value = roast.brown;
+        document.getElementById('f-dev').value = roast.dev;
+        document.getElementById('f-espresso').value = roast.espresso;
+        document.getElementById('f-ai-notes').value = roast.aiNotes;
+        document.getElementById('f-your-notes').value = roast.yourNotes;
+
+        document.getElementById('form-title').innerText = "Editing Roast";
+        document.getElementById('save-btn').innerText = "Update Roast";
+        document.getElementById('cancel-btn').style.display = 'inline-block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // CANCEL EDIT
+    function cancelEdit() {
+        editingId = null;
+        document.querySelectorAll('#app-container input:not([type="file"]), #app-container textarea, #app-container select').forEach(el => el.value = '');
+        document.getElementById('form-title').innerText = "Log New Roast";
+        document.getElementById('save-btn').innerText = "Save to Log";
+        document.getElementById('cancel-btn').style.display = 'none';
+    }
+
+    // DELETE ROAST
+    function deleteRoast(id) {
+        if(confirm("Delete this roast permanently?")) {
+            let roasts = getRoasts();
+            roasts = roasts.filter(r => r.id !== id);
+            saveRoasts(roasts);
+            if(editingId === id) cancelEdit();
+            renderLog();
+        }
+    }
+
+    // RENDER LOG LIST
+    function renderLog() {
+        const container = document.getElementById('roast-log-list');
+        const roasts = getRoasts();
+        container.innerHTML = '';
+
+        if(roasts.length === 0) {
+            container.innerHTML = '<p style="font-size:12px; color:#666;">No roasts logged yet.</p>';
+            return;
+        }
+
+        [...roasts].reverse().forEach(r => {
+            const starsHtml = r.rating ? `<span class="stars">${getStars(r.rating)}</span>` : '';
+            container.innerHTML += `
+                <div class="log-item">
+                    <input type="checkbox" class="print-check" data-id="${r.id}">
+                    <div class="log-details">
+                        <h4>${r.name} ${starsHtml} <span style="color:#999; font-weight:normal; font-size:11px;">(${r.date || 'No Date'})</span></h4>
+                        <p><em>${r.origin}</em> | Dev: ${r.dev}</p>
+                    </div>
+                    <div class="action-btns">
+                        <button class="small-btn edit-btn" onclick="editRoast(${r.id})">EDIT</button>
+                        <button class="small-btn delete-btn" onclick="deleteRoast(${r.id})">DEL</button>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // SELECT / UNSELECT ALL
+    function toggleSelectAll() {
+        const checkboxes = document.querySelectorAll('.print-check');
+        const allChecked = Array.from(checkboxes).every(c => c.checked);
+        checkboxes.forEach(c => c.checked = !allChecked);
+    }
+
+    // MULTI-PAGE PRINT ENGINE
+    function printSelected() {
+        const checks = document.querySelectorAll('.print-check:checked');
+        if(checks.length === 0) {
+            alert("Please select at least 1 roast to print.");
+            return;
+        }
+
+        const roasts = getRoasts();
+        const printContainer = document.getElementById('print-container');
+        printContainer.innerHTML = ''; 
+
+        // Gather all selected roasts
+        const selectedRoasts = [];
+        checks.forEach(chk => {
+            const id = parseInt(chk.getAttribute('data-id'));
+            const r = roasts.find(roast => roast.id === id);
+            if(r) selectedRoasts.push(r);
+        });
+
+        // Chunk them into groups of 4 for pagination
+        for (let i = 0; i < selectedRoasts.length; i += 4) {
+            const chunk = selectedRoasts.slice(i, i + 4);
+            let pageHtml = `<div class="page">`;
+            
+            chunk.forEach(r => {
+                const printStars = r.rating ? `<span style="color:#d4a017;">${getStars(r.rating)}</span>` : '';
+                pageHtml += `
+                    <div class="card">
+                        <h1>${r.name}</h1>
+                        <h2><em>${r.origin}</em></h2>
+                        <h2 class="date">${r.date} ${printStars}</h2>
+                        <h3>Roast Program</h3>
+                        <ul>
+                            <li><strong>Dry:</strong> ${r.dry}</li>
+                            <li><strong>Brown:</strong> ${r.brown}</li>
+                            <li><strong>Dev:</strong> ${r.dev}</li>
+                            <li><strong>Espresso:</strong> ${r.espresso}</li>
+                        </ul>
+                        <div class="tasting-notes">
+                            <h3>Tasting Notes</h3>
+                            <p><b>Profile: </b>${r.aiNotes}</p>
+                            <p><b>Notes: </b>${r.yourNotes}</p>
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Fill empty slots with templates if chunk has less than 4
+            for(let j = chunk.length; j < 4; j++) {
+                 pageHtml += `
+                    <div class="card">
+                        <h1>[Template]</h1>
+                        <h2><em>Origin: _________________________</em></h2>
+                        <h2 class="date">Date Here</h2>
+                        <h3>Roast Program</h3>
+                        <ul>
+                            <li><strong>Dry:</strong> P___ / ____ (Time: _____)</li>
+                            <li><strong>Brown:</strong> P___ / ____ (Time: _____)</li>
+                            <li><strong>Dev:</strong> P___ @ Crack (Time: _____)</li>
+                            <li><strong>Espresso:</strong> ____________________</li>
+                        </ul>
+                        <div class="tasting-notes">
+                            <h3>Tasting Notes</h3>
+                            <p><b>Profile: </b></p>
+                            <p><b>Notes: </b></p>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            pageHtml += `</div>`;
+            printContainer.innerHTML += pageHtml;
+        }
+
+        window.print();
+    }
+
+    // EXPORT DB (Local Backup)
+    function exportData() {
+        const roasts = getRoasts();
+        if(roasts.length === 0) { alert("No roasts to export."); return; }
+        const jsonString = JSON.stringify(roasts, null, 2);
+        const blob = new Blob([jsonString], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "sovereign_roast_backup.json";
+        document.body.appendChild(a); 
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // IMPORT DB (Restore)
+    function importData(event) {
+        const file = event.target.files[0];
+        if(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedRoasts = JSON.parse(e.target.result);
+                    if(confirm(`Import ${importedRoasts.length} roasts? This will overwrite your current log.`)) {
+                        saveRoasts(importedRoasts);
+                        cancelEdit(); 
+                        renderLog();
+                        alert("Import successful! Database restored.");
+                    }
+                } catch (error) {
+                    alert("Invalid backup file. Make sure it is the correct .json file.");
+                }
+            };
+            reader.readAsText(file);
+        }
+    }
+
+    // INIT ON LOAD
+    window.onload = renderLog;
+
+</script>
+
+</body>
+</html>
